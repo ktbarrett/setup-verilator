@@ -1,4 +1,4 @@
-name: Setup Verilator
+name: Install Verilator
 description: Install a Verilator release or nightly, building from source when no binary is available.
 author: ktbarrett
 branding:
