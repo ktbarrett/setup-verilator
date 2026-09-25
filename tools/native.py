@@ -3,7 +3,9 @@
 import os
 import shutil
 import subprocess
+import sys
 
+from .config import version
 from .upstream import source_version
 
 
@@ -58,6 +60,19 @@ def build_native(source, prefix, requested, sha, jobs, env):
     if requested != "nightly" and actual != requested:
         raise ValueError(f"Requested {requested}, but upstream source declares {actual}")
     env = {**env, "VERILATOR_SRC_VERSION": f"{actual} ({sha})", "CCACHE_DISABLE": "1"}
+    if (
+        sys.platform == "darwin"
+        and version(actual) < (5, 54)
+        and shutil.which("brew", path=env["PATH"])
+    ):
+        flex = subprocess.run(
+            ["brew", "--prefix", "flex"], env=env, capture_output=True, text=True, check=False
+        )
+        if flex.returncode == 0:
+            # Older configure scripts can mix Homebrew flex with Apple SDK headers.
+            flex_prefix = flex.stdout.strip()
+            env["LEX"] = f"{flex_prefix}/bin/flex"
+            env["CPPFLAGS"] = f"{env.get('CPPFLAGS', '')} -I{flex_prefix}/include".strip()
     run(["autoconf"], cwd=source, env=env)
     run(
         [
